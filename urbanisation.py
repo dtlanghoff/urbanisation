@@ -189,4 +189,4 @@ def main(kappa):
 
 if __name__ == '__main__':
     kappa, GRID_SIZE, POPULATION_SIZE = float(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])
-    main(kappa=1.0)
+    main(kappa)
