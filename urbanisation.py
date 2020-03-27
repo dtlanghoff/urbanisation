@@ -49,12 +49,12 @@ class Simulation:
         self.time = 0
         self.step = 0.5
         self.tau = 1/10
-        self._lambda = 1/1.9
+        self.lambda_ = 1/1.9
         self.gamma = 1/3.0
         self.beta = 0.6
 
-        self.p_EI = 0.67*self._lambda*self.step
-        self.p_EIa = 0.33*self._lambda*self.step
+        self.p_EI = 0.67*self.lambda_*self.step
+        self.p_EIa = 0.33*self.lambda_*self.step
         self.p_EE = 1-(self.p_EI + self.p_EIa)
         self.p_IR = self.gamma*self.step
         self.p_II = 1-self.p_IR
@@ -100,10 +100,10 @@ class Simulation:
         if self.time % 2 == DAY:
             # seeding events
 
-            arrival_locations = np.random.choice(self.above_80_quantile, 10, replace=False)
+            arrival_locations = np.random.choice(self.above_80_quantile, 2, replace=False)
             self.population[arrival_locations, arrival_locations, COMMUTER, SYMPTOMATIC] += 1
 
-            self.population[self.largest_population, self.largest_population, COMMUTER, SYMPTOMATIC] += 2
+            self.population[self.largest_population, self.largest_population, COMMUTER, SYMPTOMATIC] += 1
 
             # non-commuting travel
             
@@ -126,7 +126,7 @@ class Simulation:
                 p_SE = self.beta*self.step*(n_I + 0.5*n_Ia) / n_N
                 p_SS = 1 - p_SE
 
-                for home_location in N.nonzero()[0]:
+                for home_location in np.unique(N.nonzero()[0]):
                     for category in range(2):
                         SS, SE = stats.multinomial(self.population[home_location,location,category,SUSCEPTIBLE], p=[p_SS, p_SE]).rvs()[0]
                         EE, EI, EIa = stats.multinomial(self.population[home_location,location,category,EXPOSED], p=[self.p_EE, self.p_EI, self.p_EIa]).rvs()[0]
@@ -146,21 +146,21 @@ class Simulation:
                 p_SE = self.beta*self.step*(n_I + 0.5*n_Ia) / n_N
                 p_SS = 1 - p_SE
                 
-                for work_location in N_commuter.nonzero()[0]:
+                for work_location in np.unique(N_commuter.nonzero()[0]):
                     SS, SE = stats.multinomial(self.population[location,work_location,COMMUTER,SUSCEPTIBLE], p=[p_SS, p_SE]).rvs()[0]
                     EE, EI, EIa = stats.multinomial(self.population[location,work_location,COMMUTER,EXPOSED], p=[self.p_EE, self.p_EI, self.p_EIa]).rvs()[0]
                     II, IR = stats.multinomial(self.population[location,work_location,COMMUTER,SYMPTOMATIC], p=[self.p_II, self.p_IR]).rvs()[0]
                     IaIa, IaR = stats.multinomial(self.population[location,work_location,COMMUTER,ASYMPTOMATIC], p=[self.p_IaIa, self.p_IaR]).rvs()[0]
-
+                    
                     self.population[location,work_location,COMMUTER] += np.array([-SE, SE-(EI+EIa), EI-IR, EIa-IaR, IR+IaR])
 
-                for home_location in N_noncommuter.nonzero()[0]:
+                for home_location in np.unique(N_noncommuter.nonzero()[0]):
                     SS, SE = stats.multinomial(self.population[home_location,location,NONCOMMUTER,SUSCEPTIBLE], p=[p_SS, p_SE]).rvs()[0]
                     EE, EI, EIa = stats.multinomial(self.population[home_location,location,NONCOMMUTER,EXPOSED], p=[self.p_EE, self.p_EI, self.p_EIa]).rvs()[0]
                     II, IR = stats.multinomial(self.population[home_location,location,NONCOMMUTER,SYMPTOMATIC], p=[self.p_II, self.p_IR]).rvs()[0]
                     IaIa, IaR = stats.multinomial(self.population[home_location,location,NONCOMMUTER,ASYMPTOMATIC], p=[self.p_IaIa, self.p_IaR]).rvs()[0]
 
-                    self.population[location,home_location,NONCOMMUTER] += np.array([-SE, SE-(EI+EIa), EI-IR, EIa-IaR, IR+IaR])
+                    self.population[home_location,location,NONCOMMUTER] += np.array([-SE, SE-(EI+EIa), EI-IR, EIa-IaR, IR+IaR])
 
         self.time += 1
 
@@ -179,7 +179,11 @@ def main(kappa):
     block_pop_size = np.take(np.sort(block_pop_size), mapping)
 
     simulation = Simulation(block_pop_size)
-    return simulation
+
+    while simulation.time <= 730:
+        print(['day', 'night'][simulation.time % 2], simulation.time // 2)
+        print('S', simulation.population[...,SUSCEPTIBLE].sum(), ' / E', simulation.population[...,EXPOSED].sum(), ' / I', simulation.population[...,SYMPTOMATIC].sum(), ' / Ia', simulation.population[...,ASYMPTOMATIC].sum(), ' / R', simulation.population[...,REMOVED].sum(), '\n')
+        simulation.do_step()
             
 if __name__ == '__main__':
     main(kappa=1.0)
