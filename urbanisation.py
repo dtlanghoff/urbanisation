@@ -17,7 +17,7 @@ COMMUTER, NONCOMMUTER = 0, 1
 
 def draw_population_sizes(rv):
     pop_size = np.exp(rv.rvs(GRID_SIZE**2))
-    pop_size *= (POPULATION_SIZE + GRID_SIZE**2) / pop_size.sum()
+    pop_size *= (POPULATION_SIZE + GRID_SIZE**2/2) / pop_size.sum()
     pop_size = pop_size.astype('int')
     
     if pop_size.sum() < POPULATION_SIZE:
